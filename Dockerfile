@@ -12,9 +12,6 @@ COPY . .
 # Generate the prisma client
 RUN npx prisma generate
 
-# Build the app
-RUN npm run build
-
 # The final image for production
 FROM node:20-alpine AS production
 
