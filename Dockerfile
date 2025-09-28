@@ -9,9 +9,10 @@ RUN npm install
 # Copy all files
 COPY . .
 
+
 # Generate the prisma client
 RUN npx prisma generate
-
+RUN npm run build 
 # The final image for production
 FROM node:20-alpine AS production
 
@@ -28,4 +29,4 @@ EXPOSE 3000
 
 # Use the entrypoint script to run migrations and start the app
 ENTRYPOINT ["./entrypoint.sh"]
-CMD ["node", "dist/index.js"]
+CMD ["npm" ,"run", "start" ]
