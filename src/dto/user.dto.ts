@@ -16,3 +16,8 @@ export const updateUserSchema = z.object({
 export const assignRoleSchema = z.object({
   roleId: z.string(),
 });
+
+export const loginUserSchema = z.object({
+    email: z.string().email(),
+    password: z.string(),
+});

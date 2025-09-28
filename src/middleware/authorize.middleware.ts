@@ -1,23 +1,14 @@
 
 import { Request, Response, NextFunction } from 'express';
-import prisma from '../lib/prisma';
+import { sendError } from '../utils/response.handler';
 
-export const authorize = (roles: string[]) => {
-  return async (req: Request, res: Response, next: NextFunction) => {
-    // @ts-ignore
-    const userId = req.user.userId;
+export const authorize = (requiredPermissions: string[]) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const userPermissions = req.user?.permissions || [];
+    const hasPermission = requiredPermissions.every(p => userPermissions.includes(p));
 
-    if (!userId) {
-      return res.status(401).json({ message: 'Unauthorized' });
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      include: { role: true },
-    });
-
-    if (!user || !roles.includes(user.role.name)) {
-      return res.status(403).json({ message: 'Forbidden' });
+    if (!hasPermission) {
+      return sendError(res, 'Forbidden: You do not have the required permissions', 403);
     }
 
     next();

@@ -1,28 +1,30 @@
 
 import { Request, Response, NextFunction } from 'express';
-import { z, ZodSchema } from 'zod';
+import { z, ZodObject } from 'zod';
 import { sendError } from '../utils/response.handler';
+import { ParsedQs } from 'qs';
+import { ParamsDictionary } from 'express-serve-static-core';
 
 export const validate = (schema: {
-  body?: ZodSchema<any>;
-  query?: ZodSchema<any>;
-  params?: ZodSchema<any>;
+  body?: ZodObject<any>;
+  query?: ZodObject<any>;
+  params?: ZodObject<any>;
 }) => {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
     try {
       if (schema.body) {
-        req.body = schema.body.parse(req.body);
+        req.body = await schema.body.parseAsync(req.body);
       }
       if (schema.query) {
-        req.query = schema.query.parse(req.query);
+        req.query = await schema.query.parseAsync(req.query) as ParsedQs;
       }
       if (schema.params) {
-        req.params = schema.params.parse(req.params);
+        req.params = await schema.params.parseAsync(req.params) as ParamsDictionary;
       }
       next();
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return sendError(res, 'Validation error', 400, error.issues);
+        return sendError(res, 'Validation failed', 400, error.issues);
       }
       next(error);
     }

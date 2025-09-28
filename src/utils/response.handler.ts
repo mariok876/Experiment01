@@ -5,7 +5,7 @@ interface SuccessResponse<T> {
   status: string;
   message: string;
   data: T;
-  meta?: any;
+  meta?: unknown;
 }
 
 export const sendSuccess = <T>(
@@ -13,7 +13,7 @@ export const sendSuccess = <T>(
   data: T, 
   message = 'Success', 
   statusCode = 200, 
-  meta?: any
+  meta?: unknown
 ) => {
   const response: SuccessResponse<T> = {
     status: 'success',
@@ -28,7 +28,7 @@ export const sendSuccess = <T>(
   return res.status(statusCode).json(response);
 };
 
-export const sendError = (res: Response, message: string, statusCode = 500, details?: any) => {
+export const sendError = (res: Response, message: string, statusCode = 500, details?: unknown) => {
   return res.status(statusCode).json({
     status: 'error',
     message,

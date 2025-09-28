@@ -14,41 +14,26 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const client_1 = require("@prisma/client");
 const bcrypt_1 = __importDefault(require("bcrypt"));
+const process_1 = __importDefault(require("process"));
 const prisma = new client_1.PrismaClient();
 const main = () => __awaiter(void 0, void 0, void 0, function* () {
-    // Create a comprehensive list of permissions with colon-based slugs
+    // Create Permissions
     const permissions = [
-        // User Permissions
-        { name: 'Create User', slug: 'user:create' },
-        { name: 'View All Users', slug: 'user:view:all' },
-        { name: 'View User Details', slug: 'user:view' },
-        { name: 'Update User', slug: 'user:update' },
-        { name: 'Delete User', slug: 'user:delete' },
-        // Role Permissions
-        { name: 'Create Role', slug: 'role:create' },
-        { name: 'View All Roles', slug: 'role:view:all' },
-        { name: 'View Role Details', slug: 'role:view' },
-        { name: 'Update Role', slug: 'role:update' },
-        { name: 'Delete Role', slug: 'role:delete' },
-        { name: 'Assign Role to User', slug: 'role:assign' },
-        // Permission Permissions
-        { name: 'View All Permissions', slug: 'permission:view:all' },
-        { name: 'View Permission Details', slug: 'permission:view' },
-        { name: 'Update Permission', slug: 'permission:update' },
-        // Session Permissions
-        { name: 'View All Sessions', slug: 'session:view:all' },
-        { name: 'Revoke User Session', slug: 'session:revoke' },
+        { name: 'Create User', slug: 'create_user' },
+        { name: 'View Users', slug: 'view_users' },
+        { name: 'Edit User', slug: 'edit_user' },
+        { name: 'Delete User', slug: 'delete_user' },
+        { name: 'Assign Role', slug: 'assign_role' },
     ];
-    // Create or update all defined permissions
     for (const permission of permissions) {
         yield prisma.permission.upsert({
             where: { slug: permission.slug },
-            update: { name: permission.name },
+            update: {},
             create: permission,
         });
     }
-    console.log('Permissions seeded successfully.');
     // Create Roles
+    const allPermissions = yield prisma.permission.findMany();
     const adminRole = yield prisma.role.upsert({
         where: { name: 'ADMIN' },
         update: {},
@@ -56,30 +41,23 @@ const main = () => __awaiter(void 0, void 0, void 0, function* () {
             name: 'ADMIN',
             description: 'Administrator with all permissions',
             permissions: {
-                // Connect all existing permissions to the ADMIN role
-                connect: yield prisma.permission.findMany().then(p => p.map(i => ({ id: i.id }))),
+                connect: allPermissions.map(p => ({ id: p.id })),
             },
         },
     });
-    const userRole = yield prisma.role.upsert({
+    yield prisma.role.upsert({
         where: { name: 'USER' },
         update: {},
         create: {
             name: 'USER',
             description: 'Standard user with basic permissions',
             permissions: {
-                // Connect a specific set of permissions for the USER role
-                connect: [
-                    { slug: 'user:view' },
-                    { slug: 'role:view' },
-                    { slug: 'permission:view' },
-                ],
+                connect: [{ slug: 'view_users' }],
             },
         },
     });
-    console.log('Roles seeded successfully.');
-    // Create Admin User if it doesn't exist
-    const hashedPassword = yield bcrypt_1.default.hash(process.env.ADMIN_PASSWORD || 'password', 10);
+    // Create Admin User
+    const hashedPassword = yield bcrypt_1.default.hash(process_1.default.env.ADMIN_PASSWORD || 'password', 10);
     yield prisma.user.upsert({
         where: { email: 'admin@example.com' },
         update: {},
@@ -89,13 +67,12 @@ const main = () => __awaiter(void 0, void 0, void 0, function* () {
             roleId: adminRole.id,
         },
     });
-    console.log('Admin user seeded successfully.');
     console.log('Seeding completed.');
 });
 main()
     .catch(e => {
-    console.error('An error occurred during seeding:', e);
-    process.exit(1);
+    console.error(e);
+    process_1.default.exit(1);
 })
     .finally(() => __awaiter(void 0, void 0, void 0, function* () {
     yield prisma.$disconnect();

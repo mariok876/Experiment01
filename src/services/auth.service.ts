@@ -1,10 +1,10 @@
 
-import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
-import { registerSchema } from '../dto/auth.dto';
-import { loginSchema } from '../dto/login.dto';
+import { registerSchema, loginUserSchema } from '../dto/auth.dto';
 import prisma from '../lib/prisma';
+import AppError from '../utils/AppError';
+import * as userService from './user.service';
 
 const generateTokens = (userId: string) => {
   const accessToken = jwt.sign({ userId }, process.env.JWT_ACCESS_SECRET as string, { expiresIn: '15m' });
@@ -18,17 +18,10 @@ export const register = async (data: z.infer<typeof registerSchema>, userAgent?:
   });
 
   if (!userRole) {
-    throw new Error('Default user role not found. Please seed the database.');
+    throw new AppError('Default user role not found. Please seed the database.', 500);
   }
-
-  const hashedPassword = await bcrypt.hash(data.password, 10);
-  const user = await prisma.user.create({
-    data: {
-      email: data.email,
-      password: hashedPassword,
-      roleId: userRole.id,
-    },
-  });
+  
+  const user = await userService.createUser({ ...data, roleId: userRole.id });
 
   const { accessToken, refreshToken } = generateTokens(user.id);
 
@@ -45,20 +38,8 @@ export const register = async (data: z.infer<typeof registerSchema>, userAgent?:
   return { accessToken, refreshToken };
 };
 
-export const login = async (data: z.infer<typeof loginSchema>, userAgent?: string, ipAddress?: string) => {
-  const user = await prisma.user.findUnique({
-    where: { email: data.email },
-  });
-
-  if (!user) {
-    throw new Error('Invalid email or password');
-  }
-
-  const isPasswordValid = await bcrypt.compare(data.password, user.password);
-
-  if (!isPasswordValid) {
-    throw new Error('Invalid email or password');
-  }
+export const login = async (data: z.infer<typeof loginUserSchema>, userAgent?: string, ipAddress?: string) => {
+  const user = await userService.loginUser(data);
 
   const { accessToken, refreshToken } = generateTokens(user.id);
 
@@ -83,7 +64,7 @@ export const refreshToken = async (token: string) => {
     });
 
     if (!session || session.expiresAt < new Date()) {
-      throw new Error('Invalid or expired refresh token');
+      throw new AppError('Invalid or expired refresh token', 401);
     }
 
     const { accessToken, refreshToken: newRefreshToken } = generateTokens(decoded.userId);
@@ -98,18 +79,21 @@ export const refreshToken = async (token: string) => {
 
     return { accessToken, refreshToken: newRefreshToken };
   } catch (error) {
-    throw new Error('Invalid refresh token');
+    if (error instanceof AppError) {
+      throw error;
+    }
+    throw new AppError('Invalid refresh token', 401);
   }
 };
 
-export const logout = async (refreshToken: string, allDevices: boolean = false) => {
+export const logout = async (refreshToken: string, allDevices = false) => {
     const session = await prisma.session.findUnique({
         where: { refreshToken },
         include: { user: true },
     });
 
     if (!session) {
-        throw new Error('Invalid refresh token');
+        throw new AppError('Invalid refresh token', 400);
     }
 
     if (allDevices) {
@@ -132,7 +116,7 @@ export const revokeSession = async (sessionId: string, userId: string) => {
     });
 
     if (!session || session.userId !== userId) {
-        throw new Error('Session not found or user not authorized');
+        throw new AppError('Session not found or user not authorized', 404);
     }
 
     await prisma.session.delete({ where: { id: sessionId } });

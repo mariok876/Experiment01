@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -13,9 +46,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.revokeSession = exports.getActiveSessions = exports.logout = exports.refreshToken = exports.login = exports.register = void 0;
-const bcrypt_1 = __importDefault(require("bcrypt"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const prisma_1 = __importDefault(require("../lib/prisma"));
+const AppError_1 = __importDefault(require("../utils/AppError"));
+const userService = __importStar(require("./user.service"));
 const generateTokens = (userId) => {
     const accessToken = jsonwebtoken_1.default.sign({ userId }, process.env.JWT_ACCESS_SECRET, { expiresIn: '15m' });
     const refreshToken = jsonwebtoken_1.default.sign({ userId }, process.env.JWT_REFRESH_SECRET, { expiresIn: '7d' });
@@ -26,16 +60,9 @@ const register = (data, userAgent, ipAddress) => __awaiter(void 0, void 0, void 
         where: { name: 'USER' },
     });
     if (!userRole) {
-        throw new Error('Default user role not found. Please seed the database.');
+        throw new AppError_1.default('Default user role not found. Please seed the database.', 500);
     }
-    const hashedPassword = yield bcrypt_1.default.hash(data.password, 10);
-    const user = yield prisma_1.default.user.create({
-        data: {
-            email: data.email,
-            password: hashedPassword,
-            roleId: userRole.id,
-        },
-    });
+    const user = yield userService.createUser(Object.assign(Object.assign({}, data), { roleId: userRole.id }));
     const { accessToken, refreshToken } = generateTokens(user.id);
     yield prisma_1.default.session.create({
         data: {
@@ -50,16 +77,7 @@ const register = (data, userAgent, ipAddress) => __awaiter(void 0, void 0, void 
 });
 exports.register = register;
 const login = (data, userAgent, ipAddress) => __awaiter(void 0, void 0, void 0, function* () {
-    const user = yield prisma_1.default.user.findUnique({
-        where: { email: data.email },
-    });
-    if (!user) {
-        throw new Error('Invalid email or password');
-    }
-    const isPasswordValid = yield bcrypt_1.default.compare(data.password, user.password);
-    if (!isPasswordValid) {
-        throw new Error('Invalid email or password');
-    }
+    const user = yield userService.loginUser(data);
     const { accessToken, refreshToken } = generateTokens(user.id);
     yield prisma_1.default.session.create({
         data: {
@@ -80,7 +98,7 @@ const refreshToken = (token) => __awaiter(void 0, void 0, void 0, function* () {
             where: { refreshToken: token },
         });
         if (!session || session.expiresAt < new Date()) {
-            throw new Error('Invalid or expired refresh token');
+            throw new AppError_1.default('Invalid or expired refresh token', 401);
         }
         const { accessToken, refreshToken: newRefreshToken } = generateTokens(decoded.userId);
         yield prisma_1.default.session.update({
@@ -93,7 +111,10 @@ const refreshToken = (token) => __awaiter(void 0, void 0, void 0, function* () {
         return { accessToken, refreshToken: newRefreshToken };
     }
     catch (error) {
-        throw new Error('Invalid refresh token');
+        if (error instanceof AppError_1.default) {
+            throw error;
+        }
+        throw new AppError_1.default('Invalid refresh token', 401);
     }
 });
 exports.refreshToken = refreshToken;
@@ -103,7 +124,7 @@ const logout = (refreshToken_1, ...args_1) => __awaiter(void 0, [refreshToken_1,
         include: { user: true },
     });
     if (!session) {
-        throw new Error('Invalid refresh token');
+        throw new AppError_1.default('Invalid refresh token', 400);
     }
     if (allDevices) {
         yield prisma_1.default.session.deleteMany({ where: { userId: session.userId } });
@@ -125,7 +146,7 @@ const revokeSession = (sessionId, userId) => __awaiter(void 0, void 0, void 0, f
         where: { id: sessionId },
     });
     if (!session || session.userId !== userId) {
-        throw new Error('Session not found or user not authorized');
+        throw new AppError_1.default('Session not found or user not authorized', 404);
     }
     yield prisma_1.default.session.delete({ where: { id: sessionId } });
 });

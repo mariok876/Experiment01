@@ -12,9 +12,17 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.assignRole = exports.deleteUser = exports.updateUser = exports.getUser = exports.getUsers = exports.createUser = void 0;
+exports.assignRole = exports.deleteUser = exports.updateUser = exports.getUser = exports.getUsers = exports.loginUser = exports.createUser = void 0;
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const prisma_1 = __importDefault(require("../lib/prisma"));
+const AppError_1 = __importDefault(require("../utils/AppError"));
+const selectUser = {
+    id: true,
+    email: true,
+    roleId: true,
+    createdAt: true,
+    updatedAt: true,
+};
 const createUser = (data) => __awaiter(void 0, void 0, void 0, function* () {
     const hashedPassword = yield bcrypt_1.default.hash(data.password, 10);
     const user = yield prisma_1.default.user.create({
@@ -23,17 +31,32 @@ const createUser = (data) => __awaiter(void 0, void 0, void 0, function* () {
             password: hashedPassword,
             roleId: data.roleId,
         },
+        select: selectUser,
     });
     return user;
 });
 exports.createUser = createUser;
+const loginUser = (data) => __awaiter(void 0, void 0, void 0, function* () {
+    const user = yield prisma_1.default.user.findUnique({
+        where: { email: data.email },
+    });
+    if (!user) {
+        throw new AppError_1.default('Invalid credentials', 401);
+    }
+    const isPasswordValid = yield bcrypt_1.default.compare(data.password, user.password);
+    if (!isPasswordValid) {
+        throw new AppError_1.default('Invalid credentials', 401);
+    }
+    return user;
+});
+exports.loginUser = loginUser;
 const getUsers = (page, limit) => __awaiter(void 0, void 0, void 0, function* () {
     const skip = (page - 1) * limit;
     const [users, total] = yield prisma_1.default.$transaction([
         prisma_1.default.user.findMany({
             skip,
             take: limit,
-            include: { role: true },
+            select: selectUser,
         }),
         prisma_1.default.user.count(),
     ]);
@@ -43,7 +66,7 @@ exports.getUsers = getUsers;
 const getUser = (id) => __awaiter(void 0, void 0, void 0, function* () {
     const user = yield prisma_1.default.user.findUnique({
         where: { id },
-        include: { role: true },
+        select: selectUser,
     });
     return user;
 });
@@ -56,6 +79,7 @@ const updateUser = (id, data) => __awaiter(void 0, void 0, void 0, function* () 
     const user = yield prisma_1.default.user.update({
         where: { id },
         data: updateData,
+        select: selectUser,
     });
     return user;
 });
@@ -71,7 +95,7 @@ const assignRole = (userId, roleId) => __awaiter(void 0, void 0, void 0, functio
     const user = yield prisma_1.default.user.update({
         where: { id: userId },
         data: { roleId },
-        include: { role: true },
+        select: selectUser,
     });
     return user;
 });

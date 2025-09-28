@@ -1,6 +1,5 @@
 
 import { NextFunction, Request, Response } from 'express';
-import { createRoleSchema, assignPermissionsSchema, assignRoleToUserSchema } from '../dto/role.dto';
 import * as roleService from '../services/role.service';
 import { sendError, sendSuccess } from '../utils/response.handler';
 import { roleResponseSchema, rolesResponseSchema } from '../dto/response.dto';

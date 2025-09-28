@@ -6,7 +6,11 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "strict": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@types/express": ["src/types/express.d.ts"]
+    }
   },
   "include": ["src/**/*", "prisma/**/*.ts"],
   "exclude": ["node_modules", "**/*.spec.ts"]

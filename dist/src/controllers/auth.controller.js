@@ -41,13 +41,16 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.revokeSession = exports.getSessions = exports.logout = exports.refreshToken = exports.login = exports.register = void 0;
 const authService = __importStar(require("../services/auth.service"));
 const auth_dto_1 = require("../dto/auth.dto");
-const login_dto_1 = require("../dto/login.dto");
 const response_handler_1 = require("../utils/response.handler");
 const response_dto_1 = require("../dto/response.dto");
+const AppError_1 = __importDefault(require("../utils/AppError"));
 const register = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const validatedData = auth_dto_1.registerSchema.parse(req.body);
@@ -61,7 +64,7 @@ const register = (req, res, next) => __awaiter(void 0, void 0, void 0, function*
 exports.register = register;
 const login = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const validatedData = login_dto_1.loginSchema.parse(req.body);
+        const validatedData = auth_dto_1.loginUserSchema.parse(req.body);
         const { accessToken, refreshToken } = yield authService.login(validatedData, req.headers['user-agent'], req.ip);
         (0, response_handler_1.sendSuccess)(res, response_dto_1.authResponseSchema.parse({ accessToken, refreshToken }), 'Login successful');
     }
@@ -94,6 +97,9 @@ const logout = (req, res, next) => __awaiter(void 0, void 0, void 0, function* (
 exports.logout = logout;
 const getSessions = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
+        if (!req.user) {
+            throw new AppError_1.default('User not found', 401);
+        }
         const userId = req.user.userId;
         const sessions = yield authService.getActiveSessions(userId);
         (0, response_handler_1.sendSuccess)(res, response_dto_1.sessionsResponseSchema.parse(sessions), 'Sessions retrieved successfully');
@@ -105,6 +111,9 @@ const getSessions = (req, res, next) => __awaiter(void 0, void 0, void 0, functi
 exports.getSessions = getSessions;
 const revokeSession = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
+        if (!req.user) {
+            throw new AppError_1.default('User not found', 401);
+        }
         const { id } = req.params;
         const userId = req.user.userId;
         yield authService.revokeSession(id, userId);

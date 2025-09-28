@@ -1,19 +1,14 @@
 
 import { Request, Response, NextFunction } from 'express';
-import { ZodError } from 'zod';
+import AppError from '../utils/AppError';
 
-export const errorHandler = (err: Error, req: Request, res: Response, next: NextFunction) => {
-  if (err instanceof ZodError) {
-    return res.status(400).json({
-      message: 'Validation failed',
-      errors: err.flatten(),
-    });
-  }
+export const errorHandler = (err: AppError, req: Request, res: Response, next: NextFunction) => {
+  err.statusCode = err.statusCode || 500;
+  err.status = err.status || 'error';
 
-  if (err.name === 'UnauthorizedError') {
-    return res.status(401).json({ message: 'Invalid token' });
-  }
-
-  console.error(err.stack);
-  res.status(500).json({ message: 'Something went wrong' });
+  res.status(err.statusCode).json({
+    status: err.status,
+    message: err.message,
+  });
+  next();
 };

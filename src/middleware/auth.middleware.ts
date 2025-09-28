@@ -1,21 +1,24 @@
 
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import { verifyToken } from '../utils/jwt';
+import { sendError } from '../utils/response.handler';
+
+interface TokenPayload {
+  userId: string;
+}
 
 export const authenticate = (req: Request, res: Response, next: NextFunction) => {
-  const authHeader = req.headers.authorization;
+  const token = req.headers.authorization?.split(' ')[1];
 
-  if (authHeader) {
-    const token = authHeader.split(' ')[1];
+  if (!token) {
+    return sendError(res, 'Unauthorized: No token provided', 401);
+  }
 
-    jwt.verify(token, process.env.JWT_ACCESS_SECRET as string, (err, user) => {
-      if (err) {
-        return res.sendStatus(403);
-      }
-      req.user = user as { userId: string };
-      next();
-    });
-  } else {
-    res.sendStatus(401);
+  try {
+    const decoded = verifyToken(token) as TokenPayload;
+    req.user = { userId: decoded.userId, permissions: [] };
+    next();
+  } catch (error) {
+    return sendError(res, 'Unauthorized: Invalid token', 401);
   }
 };
