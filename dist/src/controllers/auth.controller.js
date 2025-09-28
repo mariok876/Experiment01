@@ -46,52 +46,72 @@ exports.revokeSession = exports.getSessions = exports.logout = exports.refreshTo
 const authService = __importStar(require("../services/auth.service"));
 const auth_dto_1 = require("../dto/auth.dto");
 const login_dto_1 = require("../dto/login.dto");
-const register = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const validatedData = auth_dto_1.registerSchema.parse(req.body);
-    const { accessToken, refreshToken } = yield authService.register(validatedData, req.headers['user-agent'], req.ip);
-    res.status(201).json({ accessToken, refreshToken });
+const response_handler_1 = require("../utils/response.handler");
+const response_dto_1 = require("../dto/response.dto");
+const register = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const validatedData = auth_dto_1.registerSchema.parse(req.body);
+        const { accessToken, refreshToken } = yield authService.register(validatedData, req.headers['user-agent'], req.ip);
+        (0, response_handler_1.sendSuccess)(res, response_dto_1.authResponseSchema.parse({ accessToken, refreshToken }), 'User registered successfully', 201);
+    }
+    catch (error) {
+        next(error);
+    }
 });
 exports.register = register;
-const login = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const validatedData = login_dto_1.loginSchema.parse(req.body);
-    const { accessToken, refreshToken } = yield authService.login(validatedData, req.headers['user-agent'], req.ip);
-    res.status(200).json({ accessToken, refreshToken });
+const login = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const validatedData = login_dto_1.loginSchema.parse(req.body);
+        const { accessToken, refreshToken } = yield authService.login(validatedData, req.headers['user-agent'], req.ip);
+        (0, response_handler_1.sendSuccess)(res, response_dto_1.authResponseSchema.parse({ accessToken, refreshToken }), 'Login successful');
+    }
+    catch (error) {
+        next(error);
+    }
 });
 exports.login = login;
-const refreshToken = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { refreshToken } = req.body;
-    if (!refreshToken) {
-        return res.status(400).json({ message: 'Refresh token is required' });
+const refreshToken = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { refreshToken } = req.body;
+        const tokens = yield authService.refreshToken(refreshToken);
+        (0, response_handler_1.sendSuccess)(res, response_dto_1.refreshTokenResponseSchema.parse(tokens), 'Token refreshed successfully');
     }
-    const tokens = yield authService.refreshToken(refreshToken);
-    res.status(200).json(tokens);
+    catch (error) {
+        next(error);
+    }
 });
 exports.refreshToken = refreshToken;
-const logout = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { refreshToken, allDevices } = req.body;
-    if (!refreshToken) {
-        return res.status(400).json({ message: 'Refresh token is required' });
+const logout = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { refreshToken, allDevices } = req.body;
+        yield authService.logout(refreshToken, allDevices);
+        (0, response_handler_1.sendSuccess)(res, null, 'Logged out successfully');
     }
-    yield authService.logout(refreshToken, allDevices);
-    res.status(200).json({ message: 'Logged out successfully' });
+    catch (error) {
+        next(error);
+    }
 });
 exports.logout = logout;
-const getSessions = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    if (!req.user) {
-        return res.status(401).json({ message: 'Unauthorized' });
+const getSessions = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const userId = req.user.userId;
+        const sessions = yield authService.getActiveSessions(userId);
+        (0, response_handler_1.sendSuccess)(res, response_dto_1.sessionsResponseSchema.parse(sessions), 'Sessions retrieved successfully');
     }
-    const userId = req.user.userId;
-    const sessions = yield authService.getActiveSessions(userId);
-    res.status(200).json(sessions);
+    catch (error) {
+        next(error);
+    }
 });
 exports.getSessions = getSessions;
-const revokeSession = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { id } = req.params;
-    if (!req.user) {
-        return res.status(401).json({ message: 'Unauthorized' });
+const revokeSession = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { id } = req.params;
+        const userId = req.user.userId;
+        yield authService.revokeSession(id, userId);
+        (0, response_handler_1.sendSuccess)(res, null, 'Session revoked successfully');
     }
-    const userId = req.user.userId;
-    yield authService.revokeSession(id, userId);
-    res.status(200).json({ message: 'Session revoked successfully' });
+    catch (error) {
+        next(error);
+    }
 });
 exports.revokeSession = revokeSession;

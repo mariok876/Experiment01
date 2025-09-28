@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.assignPermissionsToRole = exports.deleteRole = exports.getRoleById = exports.getRoles = exports.updateRole = exports.createRole = void 0;
+exports.assignRoleToUser = exports.assignPermissionsToRole = exports.deleteRole = exports.getRoleById = exports.getRoles = exports.updateRole = exports.createRole = void 0;
 const prisma_1 = __importDefault(require("../lib/prisma"));
 const createRole = (data) => __awaiter(void 0, void 0, void 0, function* () {
     const role = yield prisma_1.default.role.create({
@@ -29,14 +29,23 @@ const updateRole = (id, data) => __awaiter(void 0, void 0, void 0, function* () 
     return role;
 });
 exports.updateRole = updateRole;
-const getRoles = () => __awaiter(void 0, void 0, void 0, function* () {
-    const roles = yield prisma_1.default.role.findMany();
-    return roles;
+const getRoles = (page, limit) => __awaiter(void 0, void 0, void 0, function* () {
+    const skip = (page - 1) * limit;
+    const [roles, total] = yield prisma_1.default.$transaction([
+        prisma_1.default.role.findMany({
+            skip,
+            take: limit,
+            include: { permissions: true },
+        }),
+        prisma_1.default.role.count(),
+    ]);
+    return { roles, total };
 });
 exports.getRoles = getRoles;
 const getRoleById = (id) => __awaiter(void 0, void 0, void 0, function* () {
     const role = yield prisma_1.default.role.findUnique({
         where: { id },
+        include: { permissions: true },
     });
     return role;
 });
@@ -60,3 +69,14 @@ const assignPermissionsToRole = (roleId, permissionIds) => __awaiter(void 0, voi
     return role;
 });
 exports.assignPermissionsToRole = assignPermissionsToRole;
+const assignRoleToUser = (userId, roleId) => __awaiter(void 0, void 0, void 0, function* () {
+    const user = yield prisma_1.default.user.update({
+        where: { id: userId },
+        data: {
+            role: { connect: { id: roleId } }
+        },
+        include: { role: true }
+    });
+    return user;
+});
+exports.assignRoleToUser = assignRoleToUser;

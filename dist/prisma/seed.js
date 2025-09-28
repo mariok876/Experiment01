@@ -32,11 +32,9 @@ const main = () => __awaiter(void 0, void 0, void 0, function* () {
         { name: 'Delete Role', slug: 'role:delete' },
         { name: 'Assign Role to User', slug: 'role:assign' },
         // Permission Permissions
-        { name: 'Create Permission', slug: 'permission:create' },
         { name: 'View All Permissions', slug: 'permission:view:all' },
         { name: 'View Permission Details', slug: 'permission:view' },
         { name: 'Update Permission', slug: 'permission:update' },
-        { name: 'Delete Permission', slug: 'permission:delete' },
         // Session Permissions
         { name: 'View All Sessions', slug: 'session:view:all' },
         { name: 'Revoke User Session', slug: 'session:revoke' },

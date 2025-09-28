@@ -42,48 +42,95 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.assignPermissions = exports.deleteRole = exports.updateRole = exports.getRole = exports.getRoles = exports.createRole = void 0;
-const role_dto_1 = require("../dto/role.dto");
+exports.assignRoleToUser = exports.assignPermissions = exports.deleteRole = exports.updateRole = exports.getRole = exports.getRoles = exports.createRole = void 0;
 const roleService = __importStar(require("../services/role.service"));
-const createRole = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const validatedData = role_dto_1.createRoleSchema.parse(req.body);
-    const role = yield roleService.createRole(validatedData);
-    res.status(201).json(role);
+const response_handler_1 = require("../utils/response.handler");
+const response_dto_1 = require("../dto/response.dto");
+const createRole = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const role = yield roleService.createRole(req.body);
+        (0, response_handler_1.sendSuccess)(res, response_dto_1.roleResponseSchema.parse(role), 'Role created successfully', 201);
+    }
+    catch (error) {
+        next(error);
+    }
 });
 exports.createRole = createRole;
-const getRoles = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const roles = yield roleService.getRoles();
-    res.status(200).json(roles);
+const getRoles = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const { roles, total } = yield roleService.getRoles(page, limit);
+        (0, response_handler_1.sendSuccess)(res, response_dto_1.rolesResponseSchema.parse(roles), 'Roles retrieved successfully', 200, {
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit),
+            totalItems: total,
+        });
+    }
+    catch (error) {
+        next(error);
+    }
 });
 exports.getRoles = getRoles;
-const getRole = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { id } = req.params;
-    const role = yield roleService.getRoleById(id);
-    if (role) {
-        res.status(200).json(role);
+const getRole = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { id } = req.params;
+        const role = yield roleService.getRoleById(id);
+        if (role) {
+            (0, response_handler_1.sendSuccess)(res, response_dto_1.roleResponseSchema.parse(role), 'Role retrieved successfully');
+        }
+        else {
+            (0, response_handler_1.sendError)(res, 'Role not found', 404);
+        }
     }
-    else {
-        res.status(404).json({ message: "Role not found" });
+    catch (error) {
+        next(error);
     }
 });
 exports.getRole = getRole;
-const updateRole = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { id } = req.params;
-    const validatedData = role_dto_1.createRoleSchema.parse(req.body);
-    const role = yield roleService.updateRole(id, validatedData);
-    res.status(200).json(role);
+const updateRole = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { id } = req.params;
+        const role = yield roleService.updateRole(id, req.body);
+        (0, response_handler_1.sendSuccess)(res, response_dto_1.roleResponseSchema.parse(role), 'Role updated successfully');
+    }
+    catch (error) {
+        next(error);
+    }
 });
 exports.updateRole = updateRole;
-const deleteRole = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { id } = req.params;
-    yield roleService.deleteRole(id);
-    res.status(204).send();
+const deleteRole = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { id } = req.params;
+        yield roleService.deleteRole(id);
+        (0, response_handler_1.sendSuccess)(res, null, 'Role deleted successfully', 204);
+    }
+    catch (error) {
+        next(error);
+    }
 });
 exports.deleteRole = deleteRole;
-const assignPermissions = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { roleId } = req.params;
-    const { permissionIds } = role_dto_1.assignPermissionsSchema.parse(req.body);
-    const role = yield roleService.assignPermissionsToRole(roleId, permissionIds);
-    res.status(200).json(role);
+const assignPermissions = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { roleId } = req.params;
+        const { permissionIds } = req.body;
+        const role = yield roleService.assignPermissionsToRole(roleId, permissionIds);
+        (0, response_handler_1.sendSuccess)(res, response_dto_1.roleResponseSchema.parse(role), 'Permissions assigned successfully');
+    }
+    catch (error) {
+        next(error);
+    }
 });
 exports.assignPermissions = assignPermissions;
+const assignRoleToUser = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { userId, roleId } = req.body;
+        const user = yield roleService.assignRoleToUser(userId, roleId);
+        (0, response_handler_1.sendSuccess)(res, user, 'Role assigned successfully');
+    }
+    catch (error) {
+        next(error);
+    }
+});
+exports.assignRoleToUser = assignRoleToUser;

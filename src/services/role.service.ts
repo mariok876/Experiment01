@@ -18,14 +18,23 @@ export const updateRole = async (id: string, data: z.infer<typeof updateRoleSche
     return role;
 };
 
-export const getRoles = async () => {
-    const roles = await prisma.role.findMany();
-    return roles;
+export const getRoles = async (page: number, limit: number) => {
+    const skip = (page - 1) * limit;
+    const [roles, total] = await prisma.$transaction([
+        prisma.role.findMany({
+            skip,
+            take: limit,
+            include: { permissions: true },
+        }),
+        prisma.role.count(),
+    ]);
+    return { roles, total };
 };
 
 export const getRoleById = async (id: string) => {
     const role = await prisma.role.findUnique({
         where: { id },
+        include: { permissions: true },
     });
     return role;
 };
@@ -48,4 +57,16 @@ export const assignPermissionsToRole = async (roleId: string, permissionIds: str
     });
 
     return role;
+};
+
+export const assignRoleToUser = async (userId: string, roleId: string) => {
+    const user = await prisma.user.update({
+        where: { id: userId },
+        data: {
+            role: { connect: { id: roleId } }
+        },
+        include: { role: true }
+    });
+
+    return user;
 };

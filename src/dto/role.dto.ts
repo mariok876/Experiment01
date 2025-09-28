@@ -14,3 +14,8 @@ export const updateRoleSchema = z.object({
 export const assignPermissionsSchema = z.object({
     permissionIds: z.array(z.string()),
 });
+
+export const assignRoleToUserSchema = z.object({
+    userId: z.string(),
+    roleId: z.string(),
+});

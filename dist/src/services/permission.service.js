@@ -12,8 +12,27 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updatePermission = void 0;
+exports.updatePermission = exports.getPermissionById = exports.getPermissions = void 0;
 const prisma_1 = __importDefault(require("../lib/prisma"));
+const getPermissions = (page, limit) => __awaiter(void 0, void 0, void 0, function* () {
+    const skip = (page - 1) * limit;
+    const [permissions, total] = yield prisma_1.default.$transaction([
+        prisma_1.default.permission.findMany({
+            skip,
+            take: limit,
+        }),
+        prisma_1.default.permission.count(),
+    ]);
+    return { permissions, total };
+});
+exports.getPermissions = getPermissions;
+const getPermissionById = (id) => __awaiter(void 0, void 0, void 0, function* () {
+    const permission = yield prisma_1.default.permission.findUnique({
+        where: { id },
+    });
+    return permission;
+});
+exports.getPermissionById = getPermissionById;
 const updatePermission = (id, data) => __awaiter(void 0, void 0, void 0, function* () {
     const permission = yield prisma_1.default.permission.update({
         where: { id },

@@ -1,54 +1,68 @@
 
-import { Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import * as authService from '../services/auth.service';
 import { registerSchema } from '../dto/auth.dto';
 import { loginSchema } from '../dto/login.dto';
+import { sendSuccess } from '../utils/response.handler';
+import { authResponseSchema, refreshTokenResponseSchema, sessionsResponseSchema } from '../dto/response.dto';
 
-export const register = async (req: Request, res: Response) => {
-  const validatedData = registerSchema.parse(req.body);
-  const { accessToken, refreshToken } = await authService.register(validatedData, req.headers['user-agent'], req.ip);
-  res.status(201).json({ accessToken, refreshToken });
-};
-
-export const login = async (req: Request, res: Response) => {
-  const validatedData = loginSchema.parse(req.body);
-  const { accessToken, refreshToken } = await authService.login(validatedData, req.headers['user-agent'], req.ip);
-  res.status(200).json({ accessToken, refreshToken });
-};
-
-export const refreshToken = async (req: Request, res: Response) => {
-  const { refreshToken } = req.body;
-  if (!refreshToken) {
-    return res.status(400).json({ message: 'Refresh token is required' });
+export const register = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const validatedData = registerSchema.parse(req.body);
+    const { accessToken, refreshToken } = await authService.register(validatedData, req.headers['user-agent'], req.ip);
+    sendSuccess(res, authResponseSchema.parse({ accessToken, refreshToken }), 'User registered successfully', 201);
+  } catch (error) {
+    next(error);
   }
-  const tokens = await authService.refreshToken(refreshToken);
-  res.status(200).json(tokens);
 };
 
-export const logout = async (req: Request, res: Response) => {
-  const { refreshToken, allDevices } = req.body;
-  if (!refreshToken) {
-    return res.status(400).json({ message: 'Refresh token is required' });
+export const login = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const validatedData = loginSchema.parse(req.body);
+    const { accessToken, refreshToken } = await authService.login(validatedData, req.headers['user-agent'], req.ip);
+    sendSuccess(res, authResponseSchema.parse({ accessToken, refreshToken }), 'Login successful');
+  } catch (error) {
+    next(error);
   }
-  await authService.logout(refreshToken, allDevices);
-  res.status(200).json({ message: 'Logged out successfully' });
 };
 
-export const getSessions = async (req: Request, res: Response) => {
-  if (!req.user) {
-    return res.status(401).json({ message: 'Unauthorized' });
+export const refreshToken = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { refreshToken } = req.body;
+    const tokens = await authService.refreshToken(refreshToken);
+    sendSuccess(res, refreshTokenResponseSchema.parse(tokens), 'Token refreshed successfully');
+  } catch (error) {
+    next(error);
   }
-  const userId = req.user.userId;
-  const sessions = await authService.getActiveSessions(userId);
-  res.status(200).json(sessions);
 };
 
-export const revokeSession = async (req: Request, res: Response) => {
+export const logout = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { refreshToken, allDevices } = req.body;
+    await authService.logout(refreshToken, allDevices);
+    sendSuccess(res, null, 'Logged out successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getSessions = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user!.userId;
+    const sessions = await authService.getActiveSessions(userId);
+    sendSuccess(res, sessionsResponseSchema.parse(sessions), 'Sessions retrieved successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const revokeSession = async (req: Request, res: Response, next: NextFunction) => {
+  try {
     const { id } = req.params;
-    if (!req.user) {
-        return res.status(401).json({ message: 'Unauthorized' });
-    }
-    const userId = req.user.userId;
+    const userId = req.user!.userId;
     await authService.revokeSession(id, userId);
-    res.status(200).json({ message: 'Session revoked successfully' });
+    sendSuccess(res, null, 'Session revoked successfully');
+  } catch (error) {
+    next(error);
+  }
 };

@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteUser = exports.updateUser = exports.getUser = exports.getUsers = exports.createUser = void 0;
+exports.assignRole = exports.deleteUser = exports.updateUser = exports.getUser = exports.getUsers = exports.createUser = void 0;
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const prisma_1 = __importDefault(require("../lib/prisma"));
 const createUser = (data) => __awaiter(void 0, void 0, void 0, function* () {
@@ -27,11 +27,17 @@ const createUser = (data) => __awaiter(void 0, void 0, void 0, function* () {
     return user;
 });
 exports.createUser = createUser;
-const getUsers = () => __awaiter(void 0, void 0, void 0, function* () {
-    const users = yield prisma_1.default.user.findMany({
-        include: { role: true },
-    });
-    return users;
+const getUsers = (page, limit) => __awaiter(void 0, void 0, void 0, function* () {
+    const skip = (page - 1) * limit;
+    const [users, total] = yield prisma_1.default.$transaction([
+        prisma_1.default.user.findMany({
+            skip,
+            take: limit,
+            include: { role: true },
+        }),
+        prisma_1.default.user.count(),
+    ]);
+    return { users, total };
 });
 exports.getUsers = getUsers;
 const getUser = (id) => __awaiter(void 0, void 0, void 0, function* () {
@@ -61,3 +67,12 @@ const deleteUser = (id) => __awaiter(void 0, void 0, void 0, function* () {
     ]);
 });
 exports.deleteUser = deleteUser;
+const assignRole = (userId, roleId) => __awaiter(void 0, void 0, void 0, function* () {
+    const user = yield prisma_1.default.user.update({
+        where: { id: userId },
+        data: { roleId },
+        include: { role: true },
+    });
+    return user;
+});
+exports.assignRole = assignRole;

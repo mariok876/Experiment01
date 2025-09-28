@@ -42,13 +42,53 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updatePermission = void 0;
+exports.updatePermission = exports.getPermission = exports.getPermissions = void 0;
 const permission_dto_1 = require("../dto/permission.dto");
 const permissionService = __importStar(require("../services/permission.service"));
-const updatePermission = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const { id } = req.params;
-    const validatedData = permission_dto_1.createPermissionSchema.parse(req.body);
-    const permission = yield permissionService.updatePermission(id, validatedData);
-    res.status(200).json(permission);
+const response_handler_1 = require("../utils/response.handler");
+const response_dto_1 = require("../dto/response.dto");
+const getPermissions = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const { permissions, total } = yield permissionService.getPermissions(page, limit);
+        (0, response_handler_1.sendSuccess)(res, response_dto_1.permissionsResponseSchema.parse(permissions), 'Permissions retrieved successfully', 200, {
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit),
+            totalItems: total,
+        });
+    }
+    catch (error) {
+        next(error);
+    }
+});
+exports.getPermissions = getPermissions;
+const getPermission = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { id } = req.params;
+        const permission = yield permissionService.getPermissionById(id);
+        if (permission) {
+            (0, response_handler_1.sendSuccess)(res, response_dto_1.permissionResponseSchema.parse(permission), 'Permission retrieved successfully');
+        }
+        else {
+            (0, response_handler_1.sendError)(res, 'Permission not found', 404);
+        }
+    }
+    catch (error) {
+        next(error);
+    }
+});
+exports.getPermission = getPermission;
+const updatePermission = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { id } = req.params;
+        const validatedData = permission_dto_1.createPermissionSchema.parse(req.body);
+        const permission = yield permissionService.updatePermission(id, validatedData);
+        (0, response_handler_1.sendSuccess)(res, response_dto_1.permissionResponseSchema.parse(permission), 'Permission updated successfully');
+    }
+    catch (error) {
+        next(error);
+    }
 });
 exports.updatePermission = updatePermission;
