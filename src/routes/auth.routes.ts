@@ -1,15 +1,54 @@
 
 import { Router } from 'express';
-import * as authController from '../controllers/auth.controller';
-import { authenticate } from '../middleware/auth.middleware';
+import AuthController from '../controllers/auth.controller';
+import { authenticate } from '../middlewares/authenticate';
 
-const router = Router();
+const authRouter = Router();
 
-router.post('/register', authController.register);
-router.post('/login', authController.login);
-router.post('/refresh-token', authController.refreshToken);
-router.post('/logout', authenticate, authController.logout);
-router.get('/sessions', authenticate, authController.getSessions);
-router.delete('/sessions/:id', authenticate, authController.revokeSession);
+/**
+ * @swagger
+ * /auth/login:
+ *   post:
+ *     summary: Authenticate user and get a token
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               password:
+ *                 type: string
+ *                 format: password
+ *     responses:
+ *       200:
+ *         description: Authentication successful
+ *       401:
+ *         description: Invalid credentials
+ */
+authRouter.post('/login', AuthController.login);
 
-export default router;
+/**
+ * @swagger
+ * /auth/me:
+ *   get:
+ *     summary: Get current user info, roles, and permissions
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: User information, roles, and permissions retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ */
+authRouter.get('/me', authenticate, AuthController.getMe);
+
+export { authRouter };
