@@ -10,7 +10,8 @@
     "baseUrl": ".",
     "paths": {
       "@types/express": ["src/types/express.d.ts"]
-    }
+    },
+    "rootDir": "src"
   },
   "include": ["src/**/*", "prisma/**/*.ts"],
   "exclude": ["node_modules", "**/*.spec.ts"]
