@@ -5,22 +5,45 @@ import bcrypt from 'bcrypt';
 const prisma = new PrismaClient();
 
 const main = async () => {
-  // Create Permissions
+  // Create a comprehensive list of permissions with colon-based slugs
   const permissions = [
-    { name: 'Create User', slug: 'create_user' },
-    { name: 'View Users', slug: 'view_users' },
-    { name: 'Edit User', slug: 'edit_user' },
-    { name: 'Delete User', slug: 'delete_user' },
-    { name: 'Assign Role', slug: 'assign_role' },
+    // User Permissions
+    { name: 'Create User', slug: 'user:create' },
+    { name: 'View All Users', slug: 'user:view:all' },
+    { name: 'View User Details', slug: 'user:view' },
+    { name: 'Update User', slug: 'user:update' },
+    { name: 'Delete User', slug: 'user:delete' },
+
+    // Role Permissions
+    { name: 'Create Role', slug: 'role:create' },
+    { name: 'View All Roles', slug: 'role:view:all' },
+    { name: 'View Role Details', slug: 'role:view' },
+    { name: 'Update Role', slug: 'role:update' },
+    { name: 'Delete Role', slug: 'role:delete' },
+    { name: 'Assign Role to User', slug: 'role:assign' },
+
+    // Permission Permissions
+    { name: 'Create Permission', slug: 'permission:create' },
+    { name: 'View All Permissions', slug: 'permission:view:all' },
+    { name: 'View Permission Details', slug: 'permission:view' },
+    { name: 'Update Permission', slug: 'permission:update' },
+    { name: 'Delete Permission', slug: 'permission:delete' },
+
+    // Session Permissions
+    { name: 'View All Sessions', slug: 'session:view:all' },
+    { name: 'Revoke User Session', slug: 'session:revoke' },
   ];
 
+  // Create or update all defined permissions
   for (const permission of permissions) {
     await prisma.permission.upsert({
       where: { slug: permission.slug },
-      update: {},
+      update: { name: permission.name },
       create: permission,
     });
   }
+
+  console.log('Permissions seeded successfully.');
 
   // Create Roles
   const adminRole = await prisma.role.upsert({
@@ -30,6 +53,7 @@ const main = async () => {
       name: 'ADMIN',
       description: 'Administrator with all permissions',
       permissions: {
+        // Connect all existing permissions to the ADMIN role
         connect: await prisma.permission.findMany().then(p => p.map(i => ({ id: i.id }))),
       },
     },
@@ -42,14 +66,19 @@ const main = async () => {
       name: 'USER',
       description: 'Standard user with basic permissions',
       permissions: {
+        // Connect a specific set of permissions for the USER role
         connect: [
-          { slug: 'view_users' },
+          { slug: 'user:view' },
+          { slug: 'role:view' },
+          { slug: 'permission:view' },
         ],
       },
     },
   });
 
-  // Create Admin User
+  console.log('Roles seeded successfully.');
+
+  // Create Admin User if it doesn't exist
   const hashedPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'password', 10);
   await prisma.user.upsert({
     where: { email: 'admin@example.com' },
@@ -61,12 +90,13 @@ const main = async () => {
     },
   });
 
+  console.log('Admin user seeded successfully.');
   console.log('Seeding completed.');
 };
 
 main()
   .catch(e => {
-    console.error(e);
+    console.error('An error occurred during seeding:', e);
     process.exit(1);
   })
   .finally(async () => {
